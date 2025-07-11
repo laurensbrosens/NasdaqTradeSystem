@@ -1,5 +1,8 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.14.36301.6 d17.14
+MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NasdaqTraderSystem.Core", "NasdaqTraderSystem.Core\NasdaqTraderSystem.Core.csproj", "{724854C3-625A-4467-95D0-8E18B50345C8}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NasdaqTrader.Bot.Core", "NasdaqTrader.Bot.Core\NasdaqTrader.Bot.Core.csproj", "{35CF3EC7-00FC-4E57-845D-DAA4DDA35B6A}"
@@ -7,6 +10,8 @@ EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NasdaqTrader.CLI", "NasdaqTrader.CLI\NasdaqTrader.CLI.csproj", "{474CB44E-FBD1-40E1-84E9-9CDD6604E1E7}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NasdaqTraderSystem.Html", "NasdaqTraderSystem.Html\NasdaqTraderSystem.Html.csproj", "{4B0F462D-4E2F-4B8E-BE59-F7211B6FFB3C}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LaurensBot", "..\Bots\LaurensBot\LaurensBot.csproj", "{C5C93ACB-BCA2-C88C-3203-1D09E39DC85A}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -26,13 +31,16 @@ Global
 		{474CB44E-FBD1-40E1-84E9-9CDD6604E1E7}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{474CB44E-FBD1-40E1-84E9-9CDD6604E1E7}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{474CB44E-FBD1-40E1-84E9-9CDD6604E1E7}.Release|Any CPU.Build.0 = Release|Any CPU
-		{52CBEC64-6F3F-490D-B17D-782A7B36D74B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{52CBEC64-6F3F-490D-B17D-782A7B36D74B}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{52CBEC64-6F3F-490D-B17D-782A7B36D74B}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{52CBEC64-6F3F-490D-B17D-782A7B36D74B}.Release|Any CPU.Build.0 = Release|Any CPU
 		{4B0F462D-4E2F-4B8E-BE59-F7211B6FFB3C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{4B0F462D-4E2F-4B8E-BE59-F7211B6FFB3C}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{4B0F462D-4E2F-4B8E-BE59-F7211B6FFB3C}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{4B0F462D-4E2F-4B8E-BE59-F7211B6FFB3C}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C5C93ACB-BCA2-C88C-3203-1D09E39DC85A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C5C93ACB-BCA2-C88C-3203-1D09E39DC85A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C5C93ACB-BCA2-C88C-3203-1D09E39DC85A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C5C93ACB-BCA2-C88C-3203-1D09E39DC85A}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
 	EndGlobalSection
 EndGlobal

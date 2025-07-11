@@ -15,9 +15,10 @@
         <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
     </PropertyGroup>
     <ItemGroup>
-      <Reference Include="NasdaqTrader.Bot.Core">
-        <HintPath>..\..\Build\NasdaqTrader.Bot.Core.dll</HintPath>
-      </Reference>
+      <ProjectReference Include="..\..\Source\NasdaqTrader.Bot.Core\NasdaqTrader.Bot.Core.csproj" />
+      <ProjectReference Include="..\..\Source\NasdaqTrader.CLI\NasdaqTrader.CLI.csproj" />
+      <ProjectReference Include="..\..\Source\NasdaqTraderSystem.Core\NasdaqTraderSystem.Core.csproj" />
+      <ProjectReference Include="..\..\Source\NasdaqTraderSystem.Html\NasdaqTraderSystem.Html.csproj" />
     </ItemGroup>
 
 </Project>
