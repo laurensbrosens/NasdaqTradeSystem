@@ -2,56 +2,140 @@
 using System.Collections.Concurrent;
 
 namespace LaurensBot;
+
 public class LaurensTrader : ITraderBot
 {
     public string CompanyName => "Laurens Inc. Investments";
+    private decimal _currentHighest = 0;
+    private string _currentHighestListing = string.Empty;
+
+    private void CalculateIncrease(decimal a, decimal b, string listing)
+    {
+        if (a == 0)
+        {
+            return;
+        }
+
+        decimal increase = ((b - a) / a);
+        if (increase > _currentHighest)
+        {
+            _currentHighest = increase;
+            _currentHighestListing = listing;
+        }
+    }
 
     public async Task DoTurn(ITraderSystemContext systemContext)
     {
+        Console.WriteLine();
+        Console.WriteLine();
+        Console.WriteLine($"A new day");
+        Console.WriteLine();
         var listings = systemContext.GetListings();
 
-        Parallel.ForEach(systemContext.GetHoldings(this), x => systemContext.SellStock(this, x.Listing, x.Amount)); // Sell all
-
-        // Loop door alle holdings voor vandaag
-        // Loop door alle holdings voor morgen (zou je kunnen cachen want dat worden die van vandaag?)
-        // Koop alle aandelen waar de stijging het grootst is?
-
+        try
+        {
+            foreach (var holding in systemContext.GetHoldings(this).ToList())
+            {
+                var amount = holding.Amount;
+                var listing = holding.Listing;
+                if (amount > 0)
+                {
+                    systemContext.SellStock(this, listing, amount);
+                    Console.WriteLine($"I sold {amount} times {listing}");
+                }
+            } // Sell all
+        }
+        catch (Exception e)
+        {
+            throw;
+        }
         ConcurrentDictionary<string, decimal> pricesToday = [];
         ConcurrentDictionary<string, decimal> pricesTomorrow = [];
         var today = systemContext.CurrentDate;
-        var tomorrow = systemContext.CurrentDate.AddDays(1);
-        foreach (var listing in listings)
+        try
         {
-            var ticker = listing.Ticker;
-            var price = listing.PricePoints.Where(p => p.Date == today).First().Price;
-            var priceTomorrow = listing.PricePoints.Where(p => p.Date == tomorrow).First().Price;
-            pricesToday.TryAdd(ticker, price);
-            pricesTomorrow.TryAdd(ticker, priceTomorrow);
+            var tomorrow = systemContext.CurrentDate.AddDays(1);
+            foreach (var listing in listings)
+            {
+                var ticker = listing.Ticker;
+                var price =
+                    listing.PricePoints.Where(p => p.Date == today).FirstOrDefault()?.Price ?? 0;
+                var priceTomorrow =
+                    listing.PricePoints.Where(p => p.Date == tomorrow).FirstOrDefault()?.Price ?? 0;
+                pricesToday.TryAdd(ticker, price);
+                pricesTomorrow.TryAdd(ticker, priceTomorrow);
+            }
+        }
+        catch (Exception e)
+        {
+            throw;
         }
 
-        // Bereken percentage increase tussen prijzen
-        // Sorteer percentages van hoog naar laag
-        // Koop zo veel als mogelijk
-        // ??
-        // Profit
-
-        var tradeListing = listings
-            .Where(c => c.PricePoints.Any(p => p.Date == systemContext.CurrentDate) && c.PricePoints.Any(p => p.Date == systemContext.CurrentDate.AddDays(1)))
-            .MaxBy(c =>
-                c.PricePoints.FirstOrDefault(p => p.Date == systemContext.CurrentDate.AddDays(1))?.Price -
-                c.PricePoints.FirstOrDefault(p => p.Date == systemContext.CurrentDate)?.Price);
-
-        if (tradeListing == null)
+        try
         {
-            return;
+            while(true)
+            {
+                var currentCash = systemContext.GetCurrentCash(this);
+                if (currentCash <= 0)
+                {
+                    return;
+                }
+                Parallel.ForEach(
+                    pricesToday,
+                    x => CalculateIncrease(x.Value, pricesTomorrow[x.Key], x.Key)
+                );
+
+                if(_currentHighestListing == "")
+                {
+                    break;
+                }
+
+                var listing = listings
+                    .Where(l => l.Ticker == _currentHighestListing)
+                    .FirstOrDefault();
+                if (listing is null)
+                {
+                    continue;
+                }
+
+                int amount = 1000;
+
+                var currentPrice =
+                    listing.PricePoints.Where(p => p.Date == today).FirstOrDefault()?.Price ?? -1;
+                if (currentPrice == -1)
+                {
+                    continue;
+                }
+                amount = Math.Min(amount, (int)Math.Floor(currentCash / currentPrice));
+
+                var listingToBuy = listings
+                    .Where(l => l.Ticker == _currentHighestListing)
+                    .FirstOrDefault();
+                if (listingToBuy is null)
+                {
+                    continue;
+                }
+
+                if (amount != 0)
+                {
+                    systemContext.BuyStock(this, listingToBuy, amount);
+                    Console.WriteLine($"I bought {amount} times {currentPrice}");
+                }
+                else
+                {
+                    break;
+                }
+
+                    pricesToday.Remove(_currentHighestListing, out _);
+                _currentHighestListing = "";
+                _currentHighest = 0;
+            }
+        }
+        catch (Exception e)
+        {
+            throw;
         }
 
-        var pricePoint = tradeListing.PricePoints.FirstOrDefault(p => p.Date == systemContext.CurrentDate);
-        if (pricePoint == null)
-        {
-            return;
-        }
-
-        systemContext.BuyStock(this, tradeListing, Math.Min(1000, (int)(systemContext.GetCurrentCash(this) / pricePoint.Price)));
+        //systemContext.BuyStock(this, tradeListing, Math.Min(1000, (int)(systemContext.GetCurrentCash(this) / pricePoint.Price)));
     }
 }
