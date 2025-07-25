@@ -9,30 +9,39 @@ public class LaurensTrader : ITraderBot
     private decimal _currentHighest = 0;
     private IStockListing? _currentHighestListing = null;
     private HashSet<IStockListing> _boughtToday = [];
+    private int _tradesToBuy = 5;
+    private object _lock = new object();
 
-    private void CalculateIncrease(decimal a, decimal b, IStockListing listing)
+    private void CalculateIncrease(decimal a, decimal b, IStockListing listing, decimal budget)
     {
-        if (a == 0)
+        lock (_lock)
         {
-            return;
-        }
-
-        decimal increase = ((b - a) / a);
-        if (increase > _currentHighest)
-        {
-            _currentHighest = increase;
-            _currentHighestListing = listing;
+            if (a == 0)
+            {
+                return;
+            }
+            //decimal increase = ((b - a) / a);
+            int amount = (int)Math.Floor(budget / a);
+            decimal increase = (amount * b) - (amount * a);
+            if (increase > _currentHighest)
+            {
+                _currentHighest = increase;
+                _currentHighestListing = listing;
+            }
         }
     }
 
     public async Task DoTurn(ITraderSystemContext systemContext)
     {
+        /*
         Console.WriteLine();
         Console.WriteLine();
         Console.WriteLine($"A new day");
         Console.WriteLine();
-
-        // Problem: selling overpowers buying now, it would be beneficial to buy first, sell and if possible buy again?
+        */
+        // Problem: je kan slechts 5 transacties doen, je zou kunnen zeggen dat je 3 koopt 2 verkoopt, maar dan zit je geld vast in random aandelen, Als je 2 koopt en 3 verkoopt doe je maar 4
+        // transacties wat niet optimaal is. Dus je kan om de dag switchen: 3 kopen 2 verkopen, 2 kopen 3 verkopen etc. Dit is vrij gemakkelijk: verkoop alles en switch tussen 2 en 3 kopen.
+        // Ipv. de 3 meest stijgende aandelen, koop je de 3 meest stijgende waarmee het meeste geld weg is (profit is hoger in dat geval!).
         var listings = systemContext.GetListings();
         _boughtToday.Clear();
 
@@ -48,31 +57,20 @@ public class LaurensTrader : ITraderBot
             pricesToday.TryAdd(listing, price);
             pricesTomorrow.TryAdd(listing, priceTomorrow);
         }
-        bool sold = false;
-        //SellAll(systemContext);
-        //sold = true;
-        while (true)
+        SellAll(systemContext);
+        int tradesBought = 0;
+        while (_boughtToday.Count < _tradesToBuy)
         {
             var currentCash = systemContext.GetCurrentCash(this);
 
-            Parallel.ForEach(pricesToday, x => CalculateIncrease(x.Value, pricesTomorrow[x.Key], x.Key));
+            Parallel.ForEach(pricesToday, x => CalculateIncrease(x.Value, pricesTomorrow[x.Key], x.Key, currentCash));
 
             if (_currentHighestListing == null)
             {
-                SellAll(systemContext);
-                sold = true;
                 break;
             }
 
-            var listing = listings.Where(l => l == _currentHighestListing).FirstOrDefault();
-            if (listing is null)
-            {
-                continue;
-            }
-
-            int amount = 1000;
-
-            var currentPrice = listing.PricePoints.Where(p => p.Date == today).FirstOrDefault()?.Price ?? -1;
+            var currentPrice = _currentHighestListing.PricePoints.Where(p => p.Date == today).FirstOrDefault()?.Price ?? -1;
             if (currentPrice == -1)
             {
                 pricesToday.Remove(_currentHighestListing, out _);
@@ -80,14 +78,10 @@ public class LaurensTrader : ITraderBot
                 _currentHighest = 0;
                 continue;
             }
-            amount = Math.Min(amount, (int)Math.Floor(currentCash / currentPrice));
 
-            if (amount == 0 && !sold)
-            {
-                SellAll(systemContext);
-                sold = true;
-                amount = Math.Min(amount, (int)Math.Floor(currentCash / currentPrice));
-            }
+            int amountICanBuy = (int)Math.Floor(currentCash / currentPrice);
+
+            int amount = Math.Min(1000, amountICanBuy);
 
             if (amount != 0)
             {
@@ -96,18 +90,21 @@ public class LaurensTrader : ITraderBot
                 {
                     break;
                 }
-                Console.WriteLine($"I bought {amount} times {currentPrice}");
+                _boughtToday.Add(_currentHighestListing);
+                pricesToday.Remove(_currentHighestListing, out _);
             }
             else
             {
                 break;
             }
 
-            _boughtToday.Add(_currentHighestListing);
-            pricesToday.Remove(_currentHighestListing, out _);
+
             _currentHighestListing = null;
             _currentHighest = 0;
         }
+        _tradesToBuy = _tradesToBuy == 3 ? 2 : 3; // Switch between buying 3 and 2 stocks per turn.
+        _currentHighestListing = null;
+        _currentHighest = 0;
     }
 
     private void SellAll(ITraderSystemContext systemContext)
