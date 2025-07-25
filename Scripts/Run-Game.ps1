@@ -29,12 +29,3 @@ Get-ChildItem -Path "$PSScriptRoot/../Bots" -Recurse -Filter *.csproj | ForEach-
 Write-Host "Run the game"
 $exePath = Resolve-Path "$PSScriptRoot/../Build/NasdaqTrader.CLI.exe";
 
-$dataFolderPath = Resolve-Path "$PSScriptRoot/../Data";
-Start-Process -FilePath $exePath -ArgumentList "-d $dataFolderPath -n 500 -t 2500 -silent -s 1000" -NoNewWindow -Wait
-
-Set-Location -Path "$PSScriptRoot/../Build/results"
-
-Write-Host "Push results to the repository"
-git add .
-git commit -m "Automated commit of build results"
-git push https://$githubToken@github.com/CSHDJO/NasdaqResults.git HEAD:main

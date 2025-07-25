@@ -47,12 +47,19 @@ if (!int.TryParse(startingCashAsText, out startingCash))
     startingCash = 1000;
 }
 
+int? seed = null;
+string seedAsText = GetParameter("--seed", "Random generator seed", parameters, shouldPrompt: false);
+if (int.TryParse(seedAsText, out int seedValue))
+{
+    seed = seedValue;
+}
+
 BotLoader botLoader = new BotLoader();
 
 var botTypes = new Dictionary<string, Type>();
 botLoader.DetermineBots(AppContext.BaseDirectory + "Bots", botTypes);
 
-var stocksLoader = new StockLoader(dataFolder, amountOfStock);
+var stocksLoader = new StockLoader(dataFolder, amountOfStock, seed);
 var year = new Random().Next(2021, 2024);
 TraderSystemSimulation traderSystemSimulation = new TraderSystemSimulation(
     botTypes.Values.Select(b => (ITraderBot)Activator.CreateInstance(b)).ToList(),
@@ -67,6 +74,7 @@ foreach (var player in traderSystemSimulation.Players)
     var token = cancellationTokenSource.Token;
     var task = Task.Run(async () =>
     {
+        traderSystemSimulation.Durations[player].Start();
         while (await traderSystemSimulation.DoSimulationStep(player))
         {
             if (token.IsCancellationRequested)
@@ -75,11 +83,12 @@ foreach (var player in traderSystemSimulation.Players)
                 break;
             }
         }
-        await cancellationTokenSource.CancelAsync();
+        traderSystemSimulation.Durations[player].Stop();
+        // cancellationTokenSource.CancelAsync();
     }, cancellationToken: token);
 
-    await task;
-    await cancellationTokenSource.CancelAsync();
+    //await Task.Delay(100000000);
+    // await cancellationTokenSource.CancelAsync();
     while (task is { IsCompleted: false, IsCanceled: false, IsFaulted: false })
     {
         await Task.Delay(100);
@@ -100,16 +109,19 @@ if (!runSilent)
     p.Start();
 }
 
-string GetParameter(string parameter, string question, string[] arguments)
+string GetParameter(string parameter, string question, string[] arguments, bool shouldPrompt = true)
 {
     int indexOf = Array.IndexOf(arguments, parameter);
     if (indexOf == -1)
     {
+        if (!shouldPrompt)
+        {
+            return null;
+        }
+
         Console.WriteLine(question);
         return Console.ReadLine();
     }
 
     return arguments[indexOf + 1];
-
-    return "";
 }
