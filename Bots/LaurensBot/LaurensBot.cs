@@ -7,7 +7,8 @@ public class LaurensTrader : ITraderBot
 {
     public string CompanyName => "Laurens Inc. Investments";
     private decimal _currentHighest = 0;
-    private IStockListing _currentHighestListing = null;
+    private IStockListing? _currentHighestListing = null;
+    private HashSet<IStockListing> _boughtToday = [];
 
     private void CalculateIncrease(decimal a, decimal b, IStockListing listing)
     {
@@ -30,18 +31,11 @@ public class LaurensTrader : ITraderBot
         Console.WriteLine();
         Console.WriteLine($"A new day");
         Console.WriteLine();
-        var listings = systemContext.GetListings();
 
-        foreach (var holding in systemContext.GetHoldings(this).ToList())
-        {
-            var amount = holding.Amount;
-            var listing = holding.Listing;
-            if (amount > 0)
-            {
-                systemContext.SellStock(this, listing, amount);
-                Console.WriteLine($"I sold {amount} times {listing}");
-            }
-        } // Sell all
+        // Problem: selling overpowers buying now, it would be beneficial to buy first, sell and if possible buy again?
+        var listings = systemContext.GetListings();
+        _boughtToday.Clear();
+
         ConcurrentDictionary<IStockListing, decimal> pricesToday = [];
         ConcurrentDictionary<IStockListing, decimal> pricesTomorrow = [];
         var today = systemContext.CurrentDate;
@@ -54,18 +48,19 @@ public class LaurensTrader : ITraderBot
             pricesToday.TryAdd(listing, price);
             pricesTomorrow.TryAdd(listing, priceTomorrow);
         }
-
+        bool sold = false;
+        //SellAll(systemContext);
+        //sold = true;
         while (true)
         {
             var currentCash = systemContext.GetCurrentCash(this);
-            if (currentCash <= 0)
-            {
-                return;
-            }
+
             Parallel.ForEach(pricesToday, x => CalculateIncrease(x.Value, pricesTomorrow[x.Key], x.Key));
 
             if (_currentHighestListing == null)
             {
+                SellAll(systemContext);
+                sold = true;
                 break;
             }
 
@@ -80,19 +75,23 @@ public class LaurensTrader : ITraderBot
             var currentPrice = listing.PricePoints.Where(p => p.Date == today).FirstOrDefault()?.Price ?? -1;
             if (currentPrice == -1)
             {
+                pricesToday.Remove(_currentHighestListing, out _);
+                _currentHighestListing = null;
+                _currentHighest = 0;
                 continue;
             }
             amount = Math.Min(amount, (int)Math.Floor(currentCash / currentPrice));
 
-            var listingToBuy = listings.Where(l => l == _currentHighestListing).FirstOrDefault();
-            if (listingToBuy is null)
+            if (amount == 0 && !sold)
             {
-                continue;
+                SellAll(systemContext);
+                sold = true;
+                amount = Math.Min(amount, (int)Math.Floor(currentCash / currentPrice));
             }
 
             if (amount != 0)
             {
-                var success = systemContext.BuyStock(this, listingToBuy, amount);
+                var success = systemContext.BuyStock(this, _currentHighestListing, amount);
                 if (!success)
                 {
                     break;
@@ -104,9 +103,21 @@ public class LaurensTrader : ITraderBot
                 break;
             }
 
+            _boughtToday.Add(_currentHighestListing);
             pricesToday.Remove(_currentHighestListing, out _);
             _currentHighestListing = null;
             _currentHighest = 0;
         }
+    }
+
+    private void SellAll(ITraderSystemContext systemContext)
+    {
+        foreach (var holding in systemContext.GetHoldings(this).Where(h => !_boughtToday.Contains(h.Listing)).ToList())
+        {
+            if (holding.Amount > 0)
+            {
+                systemContext.SellStock(this, holding.Listing, holding.Amount);
+            }
+        } // Sell all if needed.
     }
 }

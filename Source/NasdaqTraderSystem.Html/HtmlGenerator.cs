@@ -1,9 +1,9 @@
-﻿using System.Reflection;
-using HandlebarsDotNet;
+﻿using HandlebarsDotNet;
 using NasdaqTrader.Bot.Core;
 using NasdaqTraderSystem.Core;
 using ScottPlot;
 using ScottPlot.Plottables;
+using System.Reflection;
 
 namespace NasdaqTraderSystem.Html;
 
@@ -173,10 +173,10 @@ public class HtmlGenerator
             var playerScatter = GetTotalWorthScatter(companiesPlot, recordsOfPlayer);
             playerScatter.LegendText = player.CompanyName + " - Total worth";
 
-            var playerCashScatter = CashScatter(companiesPlot, recordsOfPlayer);
-            playerCashScatter.LegendText = player.CompanyName + " - Cash";
-            var playerHoldingScatter = HoldingScatter(companiesPlot, recordsOfPlayer);
-            playerHoldingScatter.LegendText = player.CompanyName + " - Holdings";
+          //  var playerCashScatter = CashScatter(companiesPlot, recordsOfPlayer);
+            //playerCashScatter.LegendText = player.CompanyName + " - Cash";
+         //   var playerHoldingScatter = HoldingScatter(companiesPlot, recordsOfPlayer);
+            //playerHoldingScatter.LegendText = player.CompanyName + " - Holdings";
 
             tasks.Add(Task.Run(() =>
             {
@@ -185,11 +185,11 @@ public class HtmlGenerator
                 var playerPlotScatter = GetTotalWorthScatter(playerPlot, recordsOfPlayer);
                 playerPlotScatter.LegendText = "Total worth";
 
-                var playerPlotCashScatter = CashScatter(playerPlot, recordsOfPlayer);
-                playerPlotCashScatter.LegendText = "Cash";
+                //var playerPlotCashScatter = CashScatter(playerPlot, recordsOfPlayer);
+               // playerPlotCashScatter.LegendText = "Cash";
 
-                var playerPlotHoldingScatter = HoldingScatter(playerPlot, recordsOfPlayer);
-                playerPlotHoldingScatter.LegendText = "Holdings";
+              //  var playerPlotHoldingScatter = HoldingScatter(playerPlot, recordsOfPlayer);
+              //  playerPlotHoldingScatter.LegendText = "Holdings";
 
                 playerPlot.Axes.DateTimeTicksBottom();
                 playerPlot.SavePng(Path.Combine(baseDirectory, $"{gameDate:dd-MM-yyyy-HH-mm}", $"{player.CompanyName}.png"), 1920,

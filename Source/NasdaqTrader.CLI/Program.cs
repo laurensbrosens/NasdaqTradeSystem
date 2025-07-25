@@ -47,7 +47,7 @@ if (!int.TryParse(startingCashAsText, out startingCash))
     startingCash = 1000;
 }
 
-int? seed = null;
+int? seed = 2;
 string seedAsText = GetParameter("--seed", "Random generator seed", parameters, shouldPrompt: false);
 if (int.TryParse(seedAsText, out int seedValue))
 {
@@ -60,7 +60,7 @@ var botTypes = new Dictionary<string, Type>();
 botLoader.DetermineBots(AppContext.BaseDirectory + "Bots", botTypes);
 
 var stocksLoader = new StockLoader(dataFolder, amountOfStock, seed);
-var year = new Random().Next(2021, 2024);
+var year = new Random(seed ?? 1).Next(2021, 2024);
 TraderSystemSimulation traderSystemSimulation = new TraderSystemSimulation(
     botTypes.Values.Select(b => (ITraderBot)Activator.CreateInstance(b)).ToList(),
     startingCash, new DateOnly(year, 01, 01),
