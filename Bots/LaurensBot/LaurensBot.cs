@@ -19,9 +19,8 @@ public class LaurensTrader : ITraderBot
     public string CompanyName => "Laurens Inc. Investments";
     private bool _initial = true;
     private ITraderSystemContext _systemContext = null!;
-    private ConcurrentBag<TradeAction> _tradeActions = [];
-    private ConcurrentDictionary<DateOnly, List<TradeAction>> _tradeBuyPlanner = [];
-    private ConcurrentDictionary<DateOnly, List<TradeAction>> _tradeSellPlanner = [];
+    private ConcurrentDictionary<DateOnly, ConcurrentBag<TradeAction>> _tradeBuyPlanner = [];
+    private ConcurrentDictionary<DateOnly, ConcurrentBag<TradeAction>> _tradeSellPlanner = [];
 
     public async Task DoTurn(ITraderSystemContext systemContext)
     {
@@ -52,21 +51,44 @@ public class LaurensTrader : ITraderBot
         var startDate = _systemContext.StartDate;
         var endDate = _systemContext.EndDate;
         var listings = _systemContext.GetListings().ToList();
-        var dates = listings.First().PricePoints.Select(p => p.Date).ToArray();
+        var allTradeActions = CalculateAllPossibleActions(listings);
+        var allActions = allTradeActions.OrderBy(a => a.PercentageIncrease).GroupBy(a => a.StartDate);
+        var currentCash = _systemContext.GetCurrentCash(this);
+        foreach (var actionsOnDate in allActions)
+        {
+            foreach (var action in actionsOnDate)
+            {
+                if (!CanDoTradesOnThisDate(action.StartDate))
+                {
+                    break;
+                }
+                if (!CanDoTradesOnThisDate(action.EndDate))
+                {
+                    continue;
+                }
 
-        CalculateAllPossibleActions(listings);
+                int amount = Math.Min(1000, (int)Math.Floor(currentCash / action.StartPrice));
+                var action = action.Clone();
 
-
-        // _tradeActions.Where(a => a.StartDate == _systemContext.CurrentDate).OrderBy(a => a.PercentageIncrease);
+                var buyTrades = _tradeBuyPlanner.AddOrUpdate(action.StartDate, [action]);
+            }
+        }
+        // _allTradeActions.Where(a => a.StartDate == _systemContext.CurrentDate).OrderBy(a => a.PercentageIncrease);
 
         // Loop door alle _activeTrades en verkoop diegene met een einddatum van vandaag
-        // Loop door alle _tradeActions voor vandaag en koop diegene 1. als er nog handelingen gedaan kunnen worden vandaag 2. amount groot genoeg is 3. einddatum nog niet vol zit
+        // Loop door alle _allTradeActions voor vandaag en koop diegene 1. als er nog handelingen gedaan kunnen worden vandaag 2. amount groot genoeg is 3. einddatum nog niet vol zit
 
         return Task.CompletedTask;
     }
 
-    private void CalculateAllPossibleActions(List<IStockListing> listings)
+    private bool CanDoTradesOnThisDate(DateOnly date)
     {
+        return _tradeSellPlanner[date].Count + _tradeBuyPlanner[date].Count >= _systemContext.AmountOfTradesPerDay;
+    }
+
+    private ConcurrentBag<TradeAction> CalculateAllPossibleActions(List<IStockListing> listings)
+    {
+        ConcurrentBag<TradeAction> allTradeActions = [];
         foreach (var listing in listings)
         {
             var pricePoints = listing.PricePoints;
@@ -78,7 +100,7 @@ public class LaurensTrader : ITraderBot
                     var startPricePoint = listing.PricePoints[i];
                     var endPricePoint = listing.PricePoints[j];
                     var increase = CalculateIncrease(startPricePoint.Price, endPricePoint.Price);
-                    _tradeActions.Add(
+                    allTradeActions.Add(
                         new TradeAction()
                         {
                             StartDate = startPricePoint.Date,
@@ -92,6 +114,7 @@ public class LaurensTrader : ITraderBot
                 }
             }
         }
+        return allTradeActions;
     }
 
     private decimal CalculateIncrease(decimal a, decimal b)
