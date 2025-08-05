@@ -10,6 +10,8 @@ public class TradeAction
     public decimal PercentageIncrease { get; set; }
     public decimal StartPrice { get; set; }
     public decimal EndPrice { get; set; }
+    public IStockListing Listing { get; set; } = null;
+    public int Amount { get; set; } = 0;
 }
 
 public class LaurensTrader : ITraderBot
@@ -18,8 +20,8 @@ public class LaurensTrader : ITraderBot
     private bool _initial = true;
     private ITraderSystemContext _systemContext = null!;
     private ConcurrentBag<TradeAction> _tradeActions = [];
-    private ConcurrentBag<TradeAction> _activeTrades = [];
-
+    private ConcurrentDictionary<DateOnly, List<TradeAction>> _tradeBuyPlanner = [];
+    private ConcurrentDictionary<DateOnly, List<TradeAction>> _tradeSellPlanner = [];
 
     public async Task DoTurn(ITraderSystemContext systemContext)
     {
@@ -29,9 +31,14 @@ public class LaurensTrader : ITraderBot
             _initial = false;
             await InitialCalculations();
         }
-        _tradeActions.Where(a => a.StartDate == _systemContext.CurrentDate).OrderBy(a => a.PercentageIncrease);
-        // Loop door alle _activeTrades en verkoop diegene met een einddatum van vandaag
-        // Loop door alle _tradeActions voor vandaag en koop diegene 1. als er nog handelingen gedaan kunnen worden vandaag 2. amount groot genoeg is 3. einddatum nog niet vol zit
+        foreach (var tradeAction in _tradeSellPlanner[systemContext.CurrentDate] ?? [])
+        {
+            systemContext.SellStock(this, tradeAction.Listing, tradeAction.Amount);
+        }
+        foreach (var tradeAction in _tradeBuyPlanner[systemContext.CurrentDate] ?? [])
+        {
+            systemContext.BuyStock(this, tradeAction.Listing, tradeAction.Amount);
+        }
 
         await Task.CompletedTask;
     }
@@ -47,39 +54,44 @@ public class LaurensTrader : ITraderBot
         var listings = _systemContext.GetListings().ToList();
         var dates = listings.First().PricePoints.Select(p => p.Date).ToArray();
 
-        try
-        {
-            foreach (var listing in listings)
-            {
-                var pricePoints = listing.PricePoints;
+        CalculateAllPossibleActions(listings);
 
-                for (int i = 0; i < listing.PricePoints.Length; i++)
+
+        // _tradeActions.Where(a => a.StartDate == _systemContext.CurrentDate).OrderBy(a => a.PercentageIncrease);
+
+        // Loop door alle _activeTrades en verkoop diegene met een einddatum van vandaag
+        // Loop door alle _tradeActions voor vandaag en koop diegene 1. als er nog handelingen gedaan kunnen worden vandaag 2. amount groot genoeg is 3. einddatum nog niet vol zit
+
+        return Task.CompletedTask;
+    }
+
+    private void CalculateAllPossibleActions(List<IStockListing> listings)
+    {
+        foreach (var listing in listings)
+        {
+            var pricePoints = listing.PricePoints;
+
+            for (int i = 0; i < listing.PricePoints.Length; i++)
+            {
+                for (int j = i + 1; j < listing.PricePoints.Length; j++)
                 {
-                    for (int j = i + 1; j < listings.Count; j++)
-                    {
-                        var startPricePoint = listing.PricePoints[i];
-                        var endPricePoint = listing.PricePoints[j];
-                        var increase = CalculateIncrease(startPricePoint.Price, endPricePoint.Price);
-                        _tradeActions.Add(
-                            new TradeAction()
-                            {
-                                StartDate = startPricePoint.Date,
-                                EndDate = endPricePoint.Date,
-                                StartPrice = startPricePoint.Price,
-                                EndPrice = endPricePoint.Price,
-                                PercentageIncrease = increase
-                            }
-                        );
-                    }
+                    var startPricePoint = listing.PricePoints[i];
+                    var endPricePoint = listing.PricePoints[j];
+                    var increase = CalculateIncrease(startPricePoint.Price, endPricePoint.Price);
+                    _tradeActions.Add(
+                        new TradeAction()
+                        {
+                            StartDate = startPricePoint.Date,
+                            EndDate = endPricePoint.Date,
+                            StartPrice = startPricePoint.Price,
+                            EndPrice = endPricePoint.Price,
+                            PercentageIncrease = increase,
+                            Listing = listing
+                        }
+                    );
                 }
             }
         }
-        catch (Exception e)
-        {
-            throw;
-        }
-
-        return Task.CompletedTask;
     }
 
     private decimal CalculateIncrease(decimal a, decimal b)
