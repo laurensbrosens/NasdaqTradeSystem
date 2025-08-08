@@ -19,8 +19,9 @@ public class LaurensTrader : ITraderBot
     public string CompanyName => "Laurens Inc. Investments";
     private bool _initial = true;
     private ITraderSystemContext _systemContext = null!;
-    private ConcurrentDictionary<DateOnly, ConcurrentBag<TradeAction>> _tradeBuyPlanner = [];
-    private ConcurrentDictionary<DateOnly, ConcurrentBag<TradeAction>> _tradeSellPlanner = [];
+    private Dictionary<DateOnly, List<TradeAction>> _tradeBuyPlanner = [];
+    private Lookup<DateOnly, TradeAction> Test = new Dictionary<DateOnly, List<TradeAction>>().ToLookup()//.ToLookup<DateOnly, TradeAction>();
+    private Dictionary<DateOnly, List<TradeAction>> _tradeSellPlanner = [];
 
     public async Task DoTurn(ITraderSystemContext systemContext)
     {
@@ -68,9 +69,9 @@ public class LaurensTrader : ITraderBot
                 }
 
                 int amount = Math.Min(1000, (int)Math.Floor(currentCash / action.StartPrice));
-                var action = action.Clone();
+                action.Amount = amount;
 
-                var buyTrades = _tradeBuyPlanner.AddOrUpdate(action.StartDate, [action]);
+                var buyTrades = _tradeBuyPlanner.TryGetValue .Add(action.StartDate,);
             }
         }
         // _allTradeActions.Where(a => a.StartDate == _systemContext.CurrentDate).OrderBy(a => a.PercentageIncrease);
