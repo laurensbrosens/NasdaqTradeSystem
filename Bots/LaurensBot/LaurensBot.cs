@@ -20,7 +20,8 @@ public class LaurensTrader : ITraderBot
     private bool _initial = true;
     private ITraderSystemContext _systemContext = null!;
     private Dictionary<DateOnly, List<TradeAction>> _tradeBuyPlanner = [];
-    private Lookup<DateOnly, TradeAction> Test = new Dictionary<DateOnly, List<TradeAction>>().ToLookup()//.ToLookup<DateOnly, TradeAction>();
+
+    //private Lookup<DateOnly, TradeAction> Test = new Dictionary<DateOnly, List<TradeAction>>().ToLookup();//.ToLookup<DateOnly, TradeAction>();
     private Dictionary<DateOnly, List<TradeAction>> _tradeSellPlanner = [];
 
     public async Task DoTurn(ITraderSystemContext systemContext)
@@ -29,7 +30,15 @@ public class LaurensTrader : ITraderBot
         if (_initial)
         {
             _initial = false;
-            await InitialCalculations();
+            try
+            {
+                await InitialCalculations();
+            }
+            catch (Exception e)
+            {
+                var test = e;
+                throw;
+            }
         }
         foreach (var tradeAction in _tradeSellPlanner[systemContext.CurrentDate] ?? [])
         {
@@ -53,11 +62,19 @@ public class LaurensTrader : ITraderBot
         var endDate = _systemContext.EndDate;
         var listings = _systemContext.GetListings().ToList();
         var allTradeActions = CalculateAllPossibleActions(listings);
-        var allActions = allTradeActions.OrderBy(a => a.PercentageIncrease).GroupBy(a => a.StartDate);
+        var allActions = allTradeActions.OrderBy(a => a.StartDate).GroupBy(a => a.StartDate);
         var currentCash = _systemContext.GetCurrentCash(this);
         foreach (var actionsOnDate in allActions)
         {
-            foreach (var action in actionsOnDate)
+            if (_tradeSellPlanner.TryGetValue(actionsOnDate.FirstOrDefault()?.StartDate ?? DateOnly.MinValue, out var sellTrades))
+            {
+                foreach (var trade in sellTrades)
+                {
+                    currentCash += trade.EndPrice * trade.Amount;
+                }
+            }
+
+            foreach (var action in actionsOnDate.OrderBy(a => a.PercentageIncrease).Reverse())
             {
                 if (!CanDoTradesOnThisDate(action.StartDate))
                 {
@@ -65,13 +82,29 @@ public class LaurensTrader : ITraderBot
                 }
                 if (!CanDoTradesOnThisDate(action.EndDate))
                 {
-                    continue;
+                    break;
                 }
 
                 int amount = Math.Min(1000, (int)Math.Floor(currentCash / action.StartPrice));
+                if(amount <= 0)
+                {
+                    continue;
+                }
                 action.Amount = amount;
+                currentCash -= amount;
 
-                var buyTrades = _tradeBuyPlanner.TryGetValue .Add(action.StartDate,);
+                if (!_tradeBuyPlanner.TryGetValue(action.StartDate, out var tradesOnStartDay))
+                {
+                    tradesOnStartDay = [];
+                    _tradeBuyPlanner.Add(action.StartDate, tradesOnStartDay);
+                }
+                if (!_tradeSellPlanner.TryGetValue(action.EndDate, out var tradesOnEndDay))
+                {
+                    tradesOnEndDay = [];
+                    _tradeSellPlanner.Add(action.EndDate, tradesOnEndDay);
+                }
+                tradesOnStartDay.Add(action);
+                tradesOnEndDay.Add(action);
             }
         }
         // _allTradeActions.Where(a => a.StartDate == _systemContext.CurrentDate).OrderBy(a => a.PercentageIncrease);
@@ -84,7 +117,17 @@ public class LaurensTrader : ITraderBot
 
     private bool CanDoTradesOnThisDate(DateOnly date)
     {
-        return _tradeSellPlanner[date].Count + _tradeBuyPlanner[date].Count >= _systemContext.AmountOfTradesPerDay;
+        int sellCount = 0;
+        int buyCount = 0;
+        if (_tradeSellPlanner.TryGetValue(date, out var sellTrades))
+        {
+            sellCount = sellTrades.Count;
+        }
+        if (_tradeBuyPlanner.TryGetValue(date, out var buyTrades))
+        {
+            buyCount = buyTrades.Count;
+        }
+        return sellCount + buyCount <= _systemContext.AmountOfTradesPerDay - 1;
     }
 
     private ConcurrentBag<TradeAction> CalculateAllPossibleActions(List<IStockListing> listings)
