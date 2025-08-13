@@ -4,6 +4,7 @@ using NasdaqTrader.Bot.Core;
 using NasdaqTraderSystem.Core;
 using NasdaqTraderSystem.Html;
 using System.Diagnostics;
+using System.Globalization;
 
 var html = new HtmlGenerator();
 //CultureInfo.CurrentCulture = new CultureInfo("en-US");
