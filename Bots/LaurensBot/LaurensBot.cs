@@ -40,6 +40,7 @@ public class LaurensTrader : ITraderBot
                 throw;
             }
         }
+
         foreach (var tradeAction in _tradeSellPlanner[systemContext.CurrentDate] ?? [])
         {
             systemContext.SellStock(this, tradeAction.Listing, tradeAction.Amount);
@@ -52,11 +53,42 @@ public class LaurensTrader : ITraderBot
         await Task.CompletedTask;
     }
 
+    private bool _sellEarly = true;
+    private int _threshold = 100000;
+    private decimal _multiplier = 1.001M; // To discourage buying long, unless very good gain.
+
+    private decimal CalculateProjectedGain(decimal increase, int dayRange)
+    {
+        if(dayRange > 3)
+        {
+            return 0;
+        }
+        if (dayRange == 1)
+        {
+            return increase;
+        }
+        var gain = increase / ((dayRange - 1) * _multiplier);
+        return gain;
+    }
+
     private Task InitialCalculations()
     {
         // De bruteforce manier om dit te doen zou zijn loopen over alle dagen en hoogste stijgingen berekenen voor elke startdag met 1 dag in de toekomst of 2 etc.
 
         // Om alles veel sneller te maken zou ik een threshold kunnen instellen waarbij een bepaalde start/einddag geskipped wordt als er voldoende trades zijn en de stijging hoog genoeg is?
+
+        // Het is niet de stijging per aankoop of de absolute winst per aankoop maar de absolute winst in een bepaalde periode waar ik naar zou moeten kijken.
+        // Dus een periode van 14 dagen winst met 1 aankoop vergelijken met diezelfde periode met meerdere aankopen!
+        // Dus de beste kopen of een reeks, wiens som beter is dan de beste? De totale hoeveelheid reeksen is wss imens groot wel.
+
+        // Of een formule verzinnen die als parameters heeft bechikbare cash, percentage stijging en lengte begin/einddatum.
+        // 4% stijging als maatstaf voor nu, dan is kopen/verkopen beter als stijging / ((aantal dagen - 1) * x)?
+
+        // Hoe slecht is kopen/verkopen op 2 dagen?
+        // Of beter algo. Koop beste increase en verkoop volgende dag. Loop door alle dagen van het jaar. Doe dit 5 keer.
+        // Dan heb ik alles gekocht. Loop dan door deze chains en zoek sequenties die beter zijn, startend vanaf het einde van het jaar.
+        // Zou makkelijk veriefiëerbaar moeten zijn of een strategie beter is.
+        // Is een beetje zoals backpropagation? Kan gestopt worden vanaf dat de tijd op is!
 
         var startDate = _systemContext.StartDate;
         var endDate = _systemContext.EndDate;
@@ -73,8 +105,24 @@ public class LaurensTrader : ITraderBot
                     currentCash += trade.EndPrice * trade.Amount;
                 }
             }
+            IEnumerable<TradeAction> sortedActions = actionsOnDate.OrderByDescending(a => CalculateProjectedGain(a.PercentageIncrease, a.EndDate.DayNumber - a.StartDate.DayNumber));
+            /*
+            if (_sellEarly) // I should prefer earlier enddates until I have enough money
+            {
+                sortedActions = actionsOnDate.OrderBy(a => a.EndDate).ThenByDescending(a => a.PercentageIncrease);
 
-            foreach (var action in actionsOnDate.OrderBy(a => a.PercentageIncrease).Reverse())
+                if(currentCash > _threshold)
+                {
+                    _sellEarly = false;
+                }
+            }
+            else
+            {
+                sortedActions = actionsOnDate.OrderByDescending(a => a.PercentageIncrease);
+
+            }*/
+
+            foreach (var action in sortedActions)
             {
                 if (!CanDoTradesOnThisDate(action.StartDate))
                 {
@@ -86,7 +134,7 @@ public class LaurensTrader : ITraderBot
                 }
 
                 int amount = Math.Min(1000, (int)Math.Floor(currentCash / action.StartPrice));
-                if(amount <= 0)
+                if (amount <= 0)
                 {
                     continue;
                 }
