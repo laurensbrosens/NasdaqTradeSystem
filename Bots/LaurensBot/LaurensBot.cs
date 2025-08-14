@@ -42,16 +42,16 @@ public class LaurensTrader : ITraderBot
         }
         try
         {
-            Console.WriteLine($"Todays date is {systemContext.CurrentDate}");
+            //Console.WriteLine($"Todays date is {systemContext.CurrentDate}");
             _tradeSellPlanner.TryGetValue(systemContext.CurrentDate, out var sellTrades);
             foreach (var tradeAction in sellTrades ?? [])
             {
                 var currentCash = _systemContext.GetCurrentCash(this);
                 var sellFailed = !systemContext.SellStock(this, tradeAction.Listing, tradeAction.Amount);
-                Console.WriteLine($"I sold {tradeAction.Amount} times {tradeAction.Listing.Name} at {tradeAction.EndPrice} on {systemContext.CurrentDate}");
+                //Console.WriteLine($"I sold {tradeAction.Amount} times {tradeAction.Listing.Name} at {tradeAction.EndPrice} on {systemContext.CurrentDate}");
                 if (sellFailed)
                 {
-                    Console.WriteLine($"But I failed?");
+                    //Console.WriteLine($"But I failed?");
                     var test = 1;
                 }
             }
@@ -60,10 +60,10 @@ public class LaurensTrader : ITraderBot
             foreach (var tradeAction in buyTrades ?? [])
             {
                 var buyFailed = !systemContext.BuyStock(this, tradeAction.Listing, tradeAction.Amount);
-                Console.WriteLine($"I bought {tradeAction.Amount} times {tradeAction.Listing.Name} at {tradeAction.StartPrice} on {systemContext.CurrentDate}");
+                //Console.WriteLine($"I bought {tradeAction.Amount} times {tradeAction.Listing.Name} at {tradeAction.StartPrice} on {systemContext.CurrentDate}");
                 if (buyFailed)
                 {
-                    Console.WriteLine($"But I failed?");
+                    //Console.WriteLine($"But I failed?");
                     var test = 1;
                 }
             }
@@ -166,7 +166,16 @@ public class LaurensTrader : ITraderBot
         // Loop door alle _activeTrades en verkoop diegene met een einddatum van vandaag
         // Loop door alle _allTradeActions voor vandaag en koop diegene 1. als er nog handelingen gedaan kunnen worden vandaag 2. amount groot genoeg is 3. einddatum nog niet vol zit
 
+        OptimizeTrades(currentCash + _tradeBuyPlanner.Values.LastOrDefault()?.Sum(a => a.Amount * a.EndPrice) ?? 0);
+
         return Task.CompletedTask;
+    }
+
+    private void OptimizeTrades(decimal initialCash)
+    {
+        decimal currentBest = initialCash;
+
+        var test = initialCash;
     }
 
     private bool CanDoTradesOnThisDate(DateOnly date)
@@ -424,6 +433,7 @@ public class LaurensTrader : ITraderBot
         }
     }*/
 }
+
 internal static class DateExtension
 {
     /// <summary>
@@ -441,49 +451,52 @@ internal static class DateExtension
         bool isMonday = dayName == DayOfWeek.Monday;
         bool isWeekend = dayName == DayOfWeek.Saturday || dayName == DayOfWeek.Sunday;
 
-
         //Junteeth
-        if (new DateOnly(date.Year, 6, 19) == date) return true;
+        if (new DateOnly(date.Year, 6, 19) == date)
+            return true;
         //good friday
-        if (DateOnly.FromDateTime(EasterSunday(date.Year)).AddDays(-2) == date) return true;
+        if (DateOnly.FromDateTime(EasterSunday(date.Year)).AddDays(-2) == date)
+            return true;
 
         // New Years Day (Jan 1, or preceding Friday/following Monday if weekend)
-        if ((date.Month == 12 && date.Day == 31 && isFriday) ||
-            (date.Month == 1 && date.Day == 1 && !isWeekend) ||
-            (date.Month == 1 && date.Day == 2 && isMonday)) return true;
+        if ((date.Month == 12 && date.Day == 31 && isFriday) || (date.Month == 1 && date.Day == 1 && !isWeekend) || (date.Month == 1 && date.Day == 2 && isMonday))
+            return true;
 
         // MLK day (3rd monday in January)
-        if (date.Month == 1 && isMonday && nthWeekDay == 3) return true;
+        if (date.Month == 1 && isMonday && nthWeekDay == 3)
+            return true;
 
         // President’s Day (3rd Monday in February)
-        if (date.Month == 2 && isMonday && nthWeekDay == 3) return true;
+        if (date.Month == 2 && isMonday && nthWeekDay == 3)
+            return true;
 
         // Memorial Day (Last Monday in May)
-        if (date.Month == 5 && isMonday && date.AddDays(7).Month == 6) return true;
+        if (date.Month == 5 && isMonday && date.AddDays(7).Month == 6)
+            return true;
 
         // Independence Day (July 4, or preceding Friday/following Monday if weekend)
-        if ((date.Month == 7 && date.Day == 3 && isFriday) ||
-            (date.Month == 7 && date.Day == 4 && !isWeekend) ||
-            (date.Month == 7 && date.Day == 5 && isMonday)) return true;
+        if ((date.Month == 7 && date.Day == 3 && isFriday) || (date.Month == 7 && date.Day == 4 && !isWeekend) || (date.Month == 7 && date.Day == 5 && isMonday))
+            return true;
 
         // Labor Day (1st Monday in September)
-        if (date.Month == 9 && isMonday && nthWeekDay == 1) return true;
+        if (date.Month == 9 && isMonday && nthWeekDay == 1)
+            return true;
 
         // Columbus Day (2nd Monday in October)
-        if (date.Month == 10 && isMonday && nthWeekDay == 2) return true;
+        if (date.Month == 10 && isMonday && nthWeekDay == 2)
+            return true;
 
         // Veteran’s Day (November 11, or preceding Friday/following Monday if weekend))
-        if ((date.Month == 11 && date.Day == 10 && isFriday) ||
-            (date.Month == 11 && date.Day == 11 && !isWeekend) ||
-            (date.Month == 11 && date.Day == 12 && isMonday)) return true;
+        if ((date.Month == 11 && date.Day == 10 && isFriday) || (date.Month == 11 && date.Day == 11 && !isWeekend) || (date.Month == 11 && date.Day == 12 && isMonday))
+            return true;
 
         // Thanksgiving Day (4th Thursday in November)
-        if (date.Month == 11 && isThursday && nthWeekDay == 4) return true;
+        if (date.Month == 11 && isThursday && nthWeekDay == 4)
+            return true;
 
         // Christmas Day (December 25, or preceding Friday/following Monday if weekend))
-        if ((date.Month == 12 && date.Day == 24 && isFriday) ||
-            (date.Month == 12 && date.Day == 25 && !isWeekend) ||
-            (date.Month == 12 && date.Day == 26 && isMonday)) return true;
+        if ((date.Month == 12 && date.Day == 24 && isFriday) || (date.Month == 12 && date.Day == 25 && !isWeekend) || (date.Month == 12 && date.Day == 26 && isMonday))
+            return true;
 
         return false;
     }
