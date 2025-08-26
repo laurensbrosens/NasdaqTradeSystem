@@ -5,13 +5,27 @@ namespace LaurensBot;
 
 public class TradeAction
 {
-    public DateOnly StartDate { get; set; }
-    public DateOnly EndDate { get; set; }
-    public decimal PercentageIncrease { get; set; }
-    public decimal StartPrice { get; set; }
-    public decimal EndPrice { get; set; }
-    public IStockListing Listing { get; set; } = null;
-    public int Amount { get; set; } = 0;
+    public DateOnly StartDate { get; init; }
+    public DateOnly EndDate { get; init; }
+    public decimal PercentageIncrease { get; init; }
+    public decimal StartPrice { get; init; }
+    public decimal EndPrice { get; init; }
+    public IStockListing Listing { get; init; } = null;
+    public int Amount { get; init; } = 0;
+
+    public TradeAction Copy(int amount)
+    {
+        return new TradeAction()
+        {
+            StartDate = StartDate,
+            EndDate = EndDate,
+            PercentageIncrease = PercentageIncrease,
+            StartPrice = StartPrice,
+            EndPrice = EndPrice,
+            Listing = Listing,
+            Amount = Amount
+        };
+    }
 }
 
 public class LaurensTrader : ITraderBot
@@ -20,6 +34,7 @@ public class LaurensTrader : ITraderBot
     private bool _initial = true;
     private ITraderSystemContext _systemContext = null!;
     private Dictionary<DateOnly, List<TradeAction>> _tradeBuyPlanner = [];
+    private decimal _initialCash;
 
     //private Lookup<DateOnly, TradeAction> Test = new Dictionary<DateOnly, List<TradeAction>>().ToLookup();//.ToLookup<DateOnly, TradeAction>();
     private Dictionary<DateOnly, List<TradeAction>> _tradeSellPlanner = [];
@@ -117,7 +132,7 @@ public class LaurensTrader : ITraderBot
         var listings = _systemContext.GetListings().ToList();
         var allTradeActions = CalculateAllPossibleActions(listings);
         var allActions = allTradeActions.OrderBy(a => a.StartDate).GroupBy(a => a.StartDate);
-        var currentCash = _systemContext.GetCurrentCash(this);
+        var currentCash = _initialCash = _systemContext.GetCurrentCash(this);
         foreach (var actionsOnDate in allActions)
         {
             if (_tradeSellPlanner.TryGetValue(actionsOnDate.FirstOrDefault()?.StartDate ?? DateOnly.MinValue, out var sellTrades))
@@ -130,6 +145,11 @@ public class LaurensTrader : ITraderBot
             IEnumerable<TradeAction> sortedActions = actionsOnDate.Where(a => a.EndDate.DayNumber - a.StartDate.DayNumber <= 1).OrderByDescending(a => a.PercentageIncrease);
             foreach (var action in sortedActions)
             {
+                if(action.PercentageIncrease <= 0)
+                {
+                    continue;
+                }
+
                 if (!CanDoTradesOnThisDate(action.StartDate))
                 {
                     break;
@@ -144,21 +164,21 @@ public class LaurensTrader : ITraderBot
                 {
                     continue;
                 }
-                action.Amount = amount;
-                currentCash -= amount * action.StartPrice;
+                var actionCopy = action.Copy(amount);
+                currentCash -= amount * actionCopy.StartPrice;
 
-                if (!_tradeBuyPlanner.TryGetValue(action.StartDate, out var tradesOnStartDay))
+                if (!_tradeBuyPlanner.TryGetValue(actionCopy.StartDate, out var tradesOnStartDay))
                 {
                     tradesOnStartDay = [];
-                    _tradeBuyPlanner.Add(action.StartDate, tradesOnStartDay);
+                    _tradeBuyPlanner.Add(actionCopy.StartDate, tradesOnStartDay);
                 }
-                if (!_tradeSellPlanner.TryGetValue(action.EndDate, out var tradesOnEndDay))
+                if (!_tradeSellPlanner.TryGetValue(actionCopy.EndDate, out var tradesOnEndDay))
                 {
                     tradesOnEndDay = [];
-                    _tradeSellPlanner.Add(action.EndDate, tradesOnEndDay);
+                    _tradeSellPlanner.Add(actionCopy.EndDate, tradesOnEndDay);
                 }
-                tradesOnStartDay.Add(action);
-                tradesOnEndDay.Add(action);
+                tradesOnStartDay.Add(actionCopy);
+                tradesOnEndDay.Add(actionCopy);
             }
         }
         // _allTradeActions.Where(a => a.StartDate == _systemContext.CurrentDate).OrderBy(a => a.PercentageIncrease);
@@ -175,7 +195,47 @@ public class LaurensTrader : ITraderBot
     {
         decimal currentBest = initialCash;
 
+        // Loop door alle trades
+        // Filter trades met een hogere efficientie en een latere einddatum (verwijder de slechtste trade die overlapt), houdt alle andere trades hetzelfde
+        // Voer aanpassing door als het totale resultaat beter is, loop anders naar de volgende mogelijke actie.
+        // Probleem: soms is niets doen ook + een latere trade beter dan altijd iets doen!
+        var betterTradeSellPlanner = _tradeSellPlanner.ToDictionary();
+        var betterTradeBuyPlanner = _tradeBuyPlanner.ToDictionary();
+
+        // Do something
+        // Loop through every single action and try to insert the absolute best ones, after that is done go through again and "fill" the gaps with CalculateIncreaseWithBudget?
+
+
+        if (CalculateTotalGain(betterTradeSellPlanner, betterTradeBuyPlanner) > currentBest)
+        {
+
+        }
+
+
         var test = initialCash;
+    }
+
+    private decimal CalculateTotalGain(Dictionary<DateOnly, List<TradeAction>> tradeSellPlanner, Dictionary<DateOnly, List<TradeAction>> tradeBuyPlanner)
+    {
+        List<DateOnly> dates = tradeSellPlanner.Keys.Concat(tradeBuyPlanner.Keys).Distinct().OrderByDescending(d => d.DayNumber).ToList();
+        var currentCash = _initialCash;
+
+        foreach (var date in dates)
+        {
+            _tradeSellPlanner.TryGetValue(date, out var sellTrades);
+            foreach (var tradeAction in sellTrades ?? [])
+            {
+                currentCash += tradeAction.Amount * tradeAction.EndPrice;
+            }
+
+            _tradeBuyPlanner.TryGetValue(date, out var buyTrades);
+            foreach (var tradeAction in buyTrades ?? [])
+            {
+                currentCash -= tradeAction.Amount * tradeAction.StartPrice;
+            }
+        }
+
+        return currentCash;
     }
 
     private bool CanDoTradesOnThisDate(DateOnly date)
@@ -226,6 +286,16 @@ public class LaurensTrader : ITraderBot
             }
         }
         return allTradeActions;
+    }
+
+    private decimal CalculateIncreaseWithBudget(decimal a, decimal b, decimal budget)
+    {
+            if (a == 0)
+            {
+                return -1;
+            }
+            int amount = (int)Math.Floor(budget / a);
+            return (amount * b) - (amount * a);
     }
 
     private decimal CalculateIncrease(decimal a, decimal b)
