@@ -205,10 +205,12 @@ public class LaurensTrader : ITraderBot
         // Do something
         // Loop through every single action and try to insert the absolute best ones, after that is done go through again and "fill" the gaps with CalculateIncreaseWithBudget?
 
-
-        if (CalculateTotalGain(betterTradeSellPlanner, betterTradeBuyPlanner) > currentBest)
+        var currentTotal = CalculateTotalGain(betterTradeSellPlanner, betterTradeBuyPlanner);
+        if (currentTotal > currentBest)
         {
-
+            currentBest = currentTotal;
+            _tradeSellPlanner = betterTradeSellPlanner;
+            _tradeBuyPlanner = betterTradeBuyPlanner;
         }
 
 
