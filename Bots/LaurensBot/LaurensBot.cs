@@ -23,7 +23,7 @@ public class TradeAction
             StartPrice = StartPrice,
             EndPrice = EndPrice,
             Listing = Listing,
-            Amount = Amount
+            Amount = amount
         };
     }
 }
