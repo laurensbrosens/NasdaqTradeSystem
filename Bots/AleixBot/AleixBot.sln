@@ -1,10 +1,13 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
-VisualStudioVersion = 17.12.35527.113 d17.12
+VisualStudioVersion = 17.12.35527.113
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AleixBot", "AleixBot.csproj", "{4EED0EB0-3BBC-41E5-A1F1-AB1C2A9DDB36}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AleixBot.Tests", "..\AleixBot.Tests\AleixBot.Tests.csproj", "{716FB5B8-EB7F-4FC1-90C7-7FD2FAE3DBA4}"
+EndProject
+
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -15,8 +18,17 @@ Global
 		{4EED0EB0-3BBC-41E5-A1F1-AB1C2A9DDB36}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{4EED0EB0-3BBC-41E5-A1F1-AB1C2A9DDB36}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{4EED0EB0-3BBC-41E5-A1F1-AB1C2A9DDB36}.Release|Any CPU.Build.0 = Release|Any CPU
+		{716FB5B8-EB7F-4FC1-90C7-7FD2FAE3DBA4}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{716FB5B8-EB7F-4FC1-90C7-7FD2FAE3DBA4}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{716FB5B8-EB7F-4FC1-90C7-7FD2FAE3DBA4}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{716FB5B8-EB7F-4FC1-90C7-7FD2FAE3DBA4}.Release|Any CPU.Build.0 = Release|Any CPU
+
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {C00082EE-EABB-41B9-A550-6A1DEB725E5E}
 	EndGlobalSection
 EndGlobal

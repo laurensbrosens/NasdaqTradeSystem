@@ -132,4 +132,16 @@ $RECYCLE.BIN/
 .DS_Store
 
 _NCrunch*
+/Bots/AleixBot/.vs
+/Bots/ExampleTraderBot/.vs/ExampleTraderBot
+/Source/.vs
+/Build/NasdaqTrader.Bot.Core.dll
+/Build/NasdaqTrader.CLI.dll
+/Build/NasdaqTrader.CLI.exe
+/Build/NasdaqTraderSystem.Core.dll
+/Build/NasdaqTraderSystem.Html.dll
+/Bots/AleixBot.Tests/AleixBot.Tests.csproj
+/Bots/AleixBot.Tests/ListingPickerTests.cs
+/Bots/AleixBot/Properties/launchSettings.json
+
 .vs/
